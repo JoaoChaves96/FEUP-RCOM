@@ -15,3 +15,6 @@ volatile int alarmActivated = 0;
 void handler(int signal);
 
 void setAlarm(int sec);
+
+void stopAlarm();
+

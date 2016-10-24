@@ -19,6 +19,15 @@ void setAlarm(int sec)
 	sigaction(SIGALRM, &action, NULL);
 
 	alarm(sec);
+	return;
 }
 
-//int stopAlarm
+void stopAlarm()
+{
+	struct sigaction action;
+	action.sa_handler = NULL;
+	
+	sigaction(SIGALRM, &action, NULL);
+	alarm(0);
+	return;
+}
