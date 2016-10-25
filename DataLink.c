@@ -1,20 +1,4 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "alarm.h"
-
-#define BAUDRATE B9600
-#define MODEMDEVICE "/dev/ttyS1"
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
-#define FALSE 0
-#define TRUE 1
-
-char * SET = {FLAG, A_SENDER, SET_CODE, A_SENDER^SET_CODE, FLAG);
-char * UA = {FLAG, A_SENDER, UA_CODE, A_SENDER^UA_CODE, FLAG};
+#include "DataLink.h"
 
 int llopen(int gate, int type)
 {
@@ -57,7 +41,7 @@ int llopen(int gate, int type)
 	if(type == SEND) //Sends the SET message and waits for an answer
 	{
 		write(fd, &SET, 1);
-		if(waitForAnswer(fileDescriptor, ALARM_SEC) == VALID_UA) //Sucess
+		if(waitForAnswer(fileDescriptor, ALARM_SEC, UA, UA_SIZE) != NULL) //Sucess
 		{
 			return fileDescriptor;
 		}
@@ -73,23 +57,25 @@ int llopen(int gate, int type)
 	}
 	else //In case of error
 	{
-		return 1; 
-	} 
+		return 1;
+	}
 }
 
 
 int llread(int fd, char * buffer)
 {
-	
+
 }
 
 int llwrite(int fd, char *buffer, int length)
 {
-	char * trama = createITrama(buffer, length, 0);
-	
+	char * trama = (buffer, length, 0);
+
 	//Send trama
-	
+	write(fd, buffer, (size_t)length);
+
 	//Wait for RR/REJ
+	waitForAnswer(fd, ALARM_SEC, )
 	//If RR
 		//Verify if N(r) is correct
 	//If REJ
@@ -97,40 +83,48 @@ int llwrite(int fd, char *buffer, int length)
 }
 
 // Used by the SENDER, waits for the RECEIVER to respond
-int waitForAnswer(int fd, int sec)
+char * waitForAnswer(int fd, int sec, char * command, int commandSize)
 {
 	char * msg = malloc(sizeof(char));
-	int receivedUA = 0;
-	
+	int receivedCommand = 0;
+
+// Turns on the alarm for timeout
 	setAlarm(sec);
-	
+
 	int retries = 0;
 	for(retries; retries < MAX_RETRIES && retries >= 0; retries++)
-		while(alarmActivated != 0) //While alarm doesnt activate
+		while(alarmActivated != 0) //While not timeout
 		{
-			read(fd, msg, sizeof(char)); //Read incoming message
-		
-			if(!strcpm(msg, UA)) //If a UA is received
-				receivedUA = 1;
+			read(fd, msg, commandSize); //Read incoming message
+/*
+			if(!strcpm(msg, command)) //If a command is received
+				receivedCommand = 1;
+				retries = -1; //In order not to repeat the for cycle
+				stopAlarm();
+				break;*/
+			if(verifyTrama(msg, commandSize))
+				receivedCommand = 1;
 				retries = -1; //In order not to repeat the for cycle
 				stopAlarm();
 				break;
 		}
 	}
 
-	if(retries == -1) //Found a UA
+	if(retries == -1) //Found a command
 	{
-		return VALID_UA;
+		return msg;
 	}
 	else if(retries == MAX_RETRIES) //Number of retries reached the limit
 	{
-		return FAILED;
+		return NULL;
 	}
 	else //Error
 	{
-		return WAIT_ERROR;
+		return NULL; //TODO Arranjar uma maneira de passar um erro
 	}
 }
+
+
 
 /**
 * Type can be 0x03 if sent by SENDER, or received by RECEIVER == type 0
@@ -139,7 +133,7 @@ int waitForAnswer(int fd, int sec)
 char * createITrama(char * package, int package_length, int type)
 {
 	char * trama = malloc(sizeof(char)*(package_length + 6);
-	
+
 	trama[0] = FLAG;
 	if(type == 0)
 		trama[1] = 0x03;
@@ -147,7 +141,7 @@ char * createITrama(char * package, int package_length, int type)
 		trama[1] = 0x01;
 	else
 		return NULL;
-	
+
 	/*
 	TODO
 	trama[2] ??
@@ -158,6 +152,24 @@ char * createITrama(char * package, int package_length, int type)
 	trama[4] = *package;
 	trama[4+package_length] = 0x00 ^ *package;
 	trama[4+package_length+1] = FLAG;
-	
+
 	return trama;
+}
+
+int verifyTrama(char * trama, int tramaSize)
+{
+	if(trama[0] != FLAG)
+		return FALSE;
+	if(trama[1] != A_SENDER)
+		return FALSE;
+
+	//TODO trama[2]
+
+	int ones = countOnes(trama[3]);
+	if(ones % 2 == 1) //Meaning a odd number of ones
+		return FALSE;
+	if(trama[tramaSize-1] != FLAG)
+		return FALSE;
+
+	return TRUE;
 }
