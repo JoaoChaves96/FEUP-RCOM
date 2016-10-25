@@ -1,28 +1,25 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "alarm.h"
+#include "DataLink.h"
 
-#define BAUDRATE B9600
-#define MODEMDEVICE "/dev/ttyS1"
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
-#define FALSE 0
-#define TRUE 1
+char SET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
+char UA[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
+char RR0[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
+char RR1[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
+char REJ0[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
+char REJ1[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
 
-char * SET = {FLAG, A_SENDER, SET_CODE, A_SENDER^SET_CODE, FLAG);
-char * UA = {FLAG, A_SENDER, UA_CODE, A_SENDER^UA_CODE, FLAG};
 
-int llopen(int gate, int type)
+struct termios oldtio,newtio;
+
+
+int llopen(char* path, int type)
 {
 	//Create file descriptor
-	int fileDescriptor = open(MODEMDEVICE, O_RDWR | O_NOCCTY);
-	char byteReceived; //Control byte
+	int fd = open(path, O_RDWR | O_NOCTTY);
+	char byteReceived[5]; //Control byte
 
-	if(fileDescriptor < 0)
+	configureAlarm();
+
+	if(fd < 0)
 	{
 		return 1;
 	}
@@ -56,81 +53,87 @@ int llopen(int gate, int type)
 
 	if(type == SEND) //Sends the SET message and waits for an answer
 	{
-		write(fd, &SET, 1);
-		if(waitForAnswer(fileDescriptor, ALARM_SEC) == VALID_UA) //Sucess
+		char * answer;
+		write(fd, &SET, 5);
+		answer = waitForAnswer(fd, ALARM_SEC, UA_CODE, UA_SIZE);
+		if(answer != NULL) //Sucess
 		{
-			return fileDescriptor;
+			printf("enviou com sucesso\n");
+			free(answer);
+			return fd;
 		}
 		else //Fail
-		{
+		{	
+			printf("falhou com sucesso\n");
+			free(answer);
 			return NULL;
 		}
 	}
 	else if(type == RECEIVE)
 	{
-		read(fd, &byteReceived, 1);
-		write(fd, &UA, 1); //Sends the UA back to the sender
+		read(fd, &byteReceived, 5);
+		printf("BYTERECEIVED: %d %d %d %d %d \n", byteReceived[0], byteReceived[1], byteReceived[2], byteReceived[3], byteReceived[4]);
+		write(fd, &UA, 5); //Sends the UA back to the sender
 	}
 	else //In case of error
 	{
-		return 1; 
-	} 
-}
-
-
-int llread(int fd, char * buffer)
-{
-	
-}
-
-int llwrite(int fd, char *buffer, int length)
-{
-	char * trama = createITrama(buffer, length, 0);
-	
-	//Send trama
-	
-	//Wait for RR/REJ
-	//If RR
-		//Verify if N(r) is correct
-	//If REJ
-		//Resend trama
+		return 1;
+	}
 }
 
 // Used by the SENDER, waits for the RECEIVER to respond
-int waitForAnswer(int fd, int sec)
+char * waitForAnswer(int fd, int sec, char * command, int commandSize)
 {
-	char * msg = malloc(sizeof(char));
-	int receivedUA = 0;
-	
-	setAlarm(sec);
-	
+	char * msg = malloc(sizeof(char)*commandSize);
+	int receivedCommand = 0;
+
 	int retries = 0;
 	for(retries; retries < MAX_RETRIES && retries >= 0; retries++)
-		while(alarmActivated != 0) //While alarm doesnt activate
+	{
+		// Turns on the alarm for timeout
+		setAlarm(sec);
+		printf("Retries : %d \n", retries);
+		while(alarmActivated == 0) //While not timeout
 		{
-			read(fd, msg, sizeof(char)); //Read incoming message
-		
-			if(!strcpm(msg, UA)) //If a UA is received
-				receivedUA = 1;
+			read(fd, msg, commandSize); //Read incoming message
+			/*
+			if(!strcmp(msg, command)) //If a command is received
+				receivedCommand = 1;
 				retries = -1; //In order not to repeat the for cycle
 				stopAlarm();
+				break;*/
+			printf("MSG: %d %d %d %d %d \n", msg[0], msg[1], msg[2], msg[3], msg[4]);
+			if(verifyTrama(msg, commandSize))
+			{
+				printf("Trama accepted\n");
+				receivedCommand = 1;
+				retries = -2; //In order not to repeat the for cycle
+				stopAlarm();
 				break;
+			}		
 		}
 	}
 
-	if(retries == -1) //Found a UA
+	if(retries == -1) //Found a command
 	{
-		return VALID_UA;
+		printf("Found a command \n");
+		return msg;
 	}
 	else if(retries == MAX_RETRIES) //Number of retries reached the limit
 	{
-		return FAILED;
+		printf("Reached Max Retries \n");
+		free(msg);
+		return NULL;
 	}
 	else //Error
 	{
-		return WAIT_ERROR;
+		printf("Error \n");
+		free(msg);
+		return NULL; //TODO Arranjar uma maneira de passar um erro
 	}
 }
+
+
 
 /**
 * Type can be 0x03 if sent by SENDER, or received by RECEIVER == type 0
@@ -138,8 +141,8 @@ int waitForAnswer(int fd, int sec)
 */
 char * createITrama(char * package, int package_length, int type)
 {
-	char * trama = malloc(sizeof(char)*(package_length + 6);
-	
+	char * trama = malloc(sizeof(char)*(package_length + 6));
+
 	trama[0] = FLAG;
 	if(type == 0)
 		trama[1] = 0x03;
@@ -147,17 +150,50 @@ char * createITrama(char * package, int package_length, int type)
 		trama[1] = 0x01;
 	else
 		return NULL;
-	
+
 	/*
 	TODO
 	trama[2] ??
 	Aquele N(s) e N(r) estão sempre a alternar??
 	*/
-	trama[2] = 0x40 //PROVISORIO
+	trama[2] = 0x40; //PROVISORIO
 	trama[3] = trama[1]^trama[2];
 	trama[4] = *package;
 	trama[4+package_length] = 0x00 ^ *package;
 	trama[4+package_length+1] = FLAG;
-	
+
 	return trama;
 }
+
+int verifyTrama(char * trama, int tramaSize)
+{
+	if(trama[0] != FLAG)
+	{
+		printf("FLAG WRONG: %d\n", trama[0]);
+		return FALSE;
+	}
+	if(trama[1] != A_SENDER)
+	{
+		printf("A_SENDER WRONG: %d\n", trama[1]);
+		return FALSE;
+	}
+
+	//TODO trama[2]
+
+	int ones = countOnes(trama[3]);
+	printf("number of ones of BCC: %d \n", ones);
+	printf("TRAMA: %02X %02X %02X %02X %02X \n", trama[0], trama[1], trama[2], trama[3], trama[4]);
+	if((trama[1]^trama[2]) != trama[3]) //Meaning a odd number of ones
+	{
+		printf("BCC WRONG: %02X %02X\n",trama[1]^trama[2], trama[3]);
+		return FALSE;
+	}
+	if(trama[tramaSize-1] != FLAG)
+	{
+		printf("END FLAG WRONG: %d\n", trama[tramaSize-1]);
+		return FALSE;
+	}
+	printf("GREAT SUCCESS: TRAMA OK \n");
+	return TRUE;
+}
+

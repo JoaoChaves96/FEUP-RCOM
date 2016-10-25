@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <signal.h>
 
 #define BAUDRATE B9600
 #define MODEMDEVICE "/dev/ttyS1"
@@ -10,11 +12,13 @@
 #define FALSE 0
 #define TRUE 1
 
-volatile int alarmActivated = 0;
+int alarmActivated;
 
-void handler(int signal);
+void handler();
 
 void setAlarm(int sec);
 
 void stopAlarm();
+
+void configureAlarm();
 
