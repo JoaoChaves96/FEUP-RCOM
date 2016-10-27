@@ -1,11 +1,29 @@
 #include "DataLink.h"
 
-char SET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
-char UA[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
-char RR0[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
-char RR1[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
-char REJ0[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
-char REJ1[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
+char SET_PACKET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
+char UA_SENDER_PACKET[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
+char UA_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, UA_CODE, A_RECEIVER ^ UA_CODE, FLAG};
+char RR0_PACKET[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
+char RR1_PACKET[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
+char REJ0_PACKET[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
+char REJ1_PACKET[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
+char DISC_SENDER_PACKET[] = {FLAG, A_SENDER, DISC_CODE, A_SENDER^DISC_CODE, FLAG};
+char DISC_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, DISC_CODE, A_RECEIVER^DISC_CODE, FLAG};
+
+typedef enum{START_RC, F_RC, A_RC, C_RC, BCC,STOP_RC} State;
+typedef enum{SET, UA_S, UA_R, DISC_S, DISC_R} Type;
+
+int fd;
+
+int createPacket(char *trama, char *buf, int length, char control);
+
+int receivePacket(int fd, char *trama);
+
+int waitForAnAnswer(Type command);
+
+void updateState(State *state, Type type, unsigned char rByte);
+
+int validPacket(char *S);
 
 
 struct termios oldtio,newtio;
@@ -13,15 +31,16 @@ struct termios oldtio,newtio;
 
 int llopen(char* path, int type)
 {
-	//Create file descriptor
-	int fd = open(path, O_RDWR | O_NOCTTY);
-	char byteReceived[5]; //Control byte
 
-	configureAlarm();
+	Type ctype;
+	//Create file descriptor
+	fd = open(path, O_RDWR | O_NOCTTY);
+	//char byteReceived[5]; //Control byte
 
 	if(fd < 0)
-	{
-		return 1;
+	{	
+		perror(path);
+		return -1;
 	}
 
  	if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
@@ -37,8 +56,16 @@ int llopen(char* path, int type)
    	/* set input mode (non-canonical, no echo,...) */
    	newtio.c_lflag = 0;
 
+
+   	if (type == RECEIVE){
    	newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
    	newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
+   	}
+
+   	if (type == SEND){
+   		newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+   		newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
+   	}
 
 	tcflush(fd, TCIOFLUSH); //Cleans the buffer
 
@@ -50,150 +77,361 @@ int llopen(char* path, int type)
     printf("New termios structure set\n");
 
 
+    configureAlarm(3);
 
 	if(type == SEND) //Sends the SET message and waits for an answer
 	{
-		char * answer;
-		write(fd, &SET, 5);
-		answer = waitForAnswer(fd, ALARM_SEC, UA_CODE, UA_SIZE);
-		if(answer != NULL) //Sucess
-		{
-			printf("enviou com sucesso\n");
-			free(answer);
-			return fd;
+		write(fd, SET_PACKET, PACKET_LENGTH);
+		setAlarm(3, fd, SET_PACKET, PACKET_LENGTH);
+
+		ctype = UA_S;
+
+		if(waitForAnAnswer(ctype) != 0){
+			printf("failed to connect to the receiver...");
+			return -1;
 		}
-		else //Fail
-		{	
-			printf("falhou com sucesso\n");
-			free(answer);
-			return NULL;
-		}
+
+		stopAlarm();
+
 	}
 	else if(type == RECEIVE)
 	{
-		read(fd, &byteReceived, 5);
-		printf("BYTERECEIVED: %d %d %d %d %d \n", byteReceived[0], byteReceived[1], byteReceived[2], byteReceived[3], byteReceived[4]);
-		write(fd, &UA, 5); //Sends the UA back to the sender
+		ctype = SET;
+
+		if(waitForAnAnswer(ctype) != 0){
+			printf("failed to connect to the sender...");
+			return -1;
+		}
+
+		write(fd, UA_SENDER_PACKET, PACKET_LENGTH); //Sends the UA back to the sender
 	}
-	else //In case of error
-	{
-		return 1;
-	}
+
+	return fd;
 }
 
-// Used by the SENDER, waits for the RECEIVER to respond
-char * waitForAnswer(int fd, int sec, char * command, int commandSize)
-{
-	char * msg = malloc(sizeof(char)*commandSize);
-	int receivedCommand = 0;
+int llwrite(int fd, char * buffer, int length){
+	static unsigned char x = 0;
+	char trama[255];
+	unsigned char control = 0;
+	control <<=6;
+	int rByte,r, received;
+	char S[PACKET_LENGTH];
 
-	int retries = 0;
-	for(retries; retries < MAX_RETRIES && retries >= 0; retries++)
-	{
-		// Turns on the alarm for timeout
-		setAlarm(sec);
-		printf("Retries : %d \n", retries);
-		while(alarmActivated == 0) //While not timeout
-		{
-			read(fd, msg, commandSize); //Read incoming message
-			/*
-			if(!strcmp(msg, command)) //If a command is received
-				receivedCommand = 1;
-				retries = -1; //In order not to repeat the for cycle
-				stopAlarm();
-				break;*/
-			printf("MSG: %d %d %d %d %d \n", msg[0], msg[1], msg[2], msg[3], msg[4]);
-			if(verifyTrama(msg, commandSize))
-			{
-				printf("Trama accepted\n");
-				receivedCommand = 1;
-				retries = -2; //In order not to repeat the for cycle
-				stopAlarm();
-				break;
-			}		
+
+	int size = createPacket(trama,buffer,length,control);
+
+	do{
+		write(fd,trama,size);
+		setAlarm(3, fd, trama, length);
+		rByte=0;
+
+		while(rByte != PACKET_LENGTH){
+			r = read(fd,S+rByte,1);
+			if(!alarmActivated){
+				printf("Connection timed out...\n");
+				exit(1);
+			}
+			if(r){
+				rByte++;
+			}
+		}
+
+		stopAlarm();
+
+		received = validPacket(S);
+
+		if(!received){
+			tcflush(fd, TCIOFLUSH);
+		}
+	}while(!received);
+
+	x = (x+1) % 2;
+
+	return size;
+}
+
+int llread(int fd, char* trama){
+	//int pSize;
+
+	/*do{
+		pSIze = receivePacket(fd, trama);
+	}*/
+
+	return 0;
+}
+
+int llclose(int fd, int programType){
+
+	Type type;
+
+	if(programType == SEND){
+		write(fd, DISC_SENDER_PACKET, PACKET_LENGTH);
+
+		type = DISC_R;
+
+		if(waitForAnAnswer(type) != 0){
+			printf("Failed to connect to the receiver...\n");
+			return -1;
+		}
+
+		write(fd, UA_RECEIVER_PACKET, PACKET_LENGTH);
+		sleep(2);
+	}
+	else if(programType == RECEIVE){
+
+		type = DISC_S;
+
+		if(waitForAnAnswer(type) != 0){
+			printf("Failed to connect to the receiver...\n");
+			return -1;
+		}
+
+		write(fd, DISC_RECEIVER_PACKET, PACKET_LENGTH);
+
+		type = UA_R;
+
+		if(waitForAnAnswer(type) != 0){
+			printf("Failed to connect to the receiver...\n");
+			return -1;
 		}
 	}
 
-	if(retries == -1) //Found a command
-	{
-		printf("Found a command \n");
-		return msg;
+	if (tcsetattr(fd, TCSANOW, &oldtio) == -1){
+			perror("tcsetattr");
+			return -1;
 	}
-	else if(retries == MAX_RETRIES) //Number of retries reached the limit
-	{
-		printf("Reached Max Retries \n");
-		free(msg);
-		return NULL;
+
+	close(fd);
+	return 0;
+}
+
+int createPacket(char *trama, char *buf, int length, char control){
+
+	int i=0;
+	int count;
+
+	trama[i] = FLAG;
+	i++;
+	trama[i]=A_SENDER;
+	i++;
+	trama[i]=control;
+
+	unsigned char BCC1 = A_SENDER ^ control;
+	unsigned char BCC2 = 0x00;
+
+	i++;
+	trama[i]=BCC1;
+
+	for(count =0; count < length; count++, i++){
+		BCC2 = BCC2 ^ buf[count];
+		trama[i] = buf[count];
 	}
-	else //Error
-	{
-		printf("Error \n");
-		free(msg);
-		return NULL; //TODO Arranjar uma maneira de passar um erro
+
+	i++;
+	trama[i]=BCC2;
+	i++;
+	trama[i]=FLAG;
+
+	return i;
+
+}
+
+int receivePacket(int fd, char *trama){
+
+	int i=0;
+	State state;
+	unsigned char rByte;
+
+	state = START_RC;
+
+	while(state != STOP_RC){
+		read(fd, &rByte,1);
+
+		switch(state){
+			case START_RC:
+				if(rByte == FLAG){
+					trama[i] = rByte;
+					i++;
+					state = F_RC;
+				}
+				break;
+
+			case F_RC:
+				if(rByte == A_SENDER){
+					trama[i] = rByte;
+					i++;
+					state = A_RC;
+				}
+				else if(rByte == FLAG);
+				else{
+					state=START_RC;
+				}
+				break;
+
+			case A_RC:
+				if(rByte != FLAG){
+					trama[i] = rByte;
+					i++;
+					state = C_RC;
+				}
+				else{
+					state = F_RC;
+				}
+				break;
+
+				case C_RC:
+					if(rByte != FLAG){
+						trama[i] = rByte;
+						i++;
+						state = BCC;
+					}
+					else{
+						state = F_RC;
+					}
+					break;
+
+				case BCC:
+					if(rByte == FLAG){
+						trama[i] = rByte;
+						i++;
+						state = STOP_RC;
+					}
+					else{
+						trama[i]=rByte;
+						i++;
+					}
+					break;
+					default:
+					break;
+
+		}
+	}
+
+	return i;
+
+}
+
+int waitForAnAnswer(Type command){
+
+	unsigned char rByte;
+	State state;
+	int r;
+
+	state = START_RC;
+
+	sleep(2);
+	while(state != STOP_RC){  //while it doesnt receive the STOP byte
+		r = read(fd, &rByte, 1);
+
+		if(alarmActivated){
+			return -1;
+			//setAlarm(3);
+			//printf("Connection timed out...");
+			//return -1;
+		}
+
+		if(r)
+			updateState(&state, command, rByte);
+	}
+
+	stopAlarm();
+
+	return 0;
+}
+
+void updateState(State *state, Type type, unsigned char rByte){
+	switch(*state){
+		case START_RC:
+			if(rByte == FLAG){
+				*state = F_RC;
+			}
+			break;
+
+		case F_RC:
+
+			if( ((type == SET) || (type == UA_S) || (type == DISC_S)) && rByte == A_SENDER)
+				*state = A_RC;
+
+			else if(((type == UA_R) || (type == DISC_R)) && rByte == A_RECEIVER)
+				*state = A_RC;
+
+			else if (rByte == FLAG); // didnt advance to next byte, stays in the same byte/state
+
+			else
+				*state = START_RC;
+
+			/*if(((programType == SEND) && (rByte == A_RECEIVER)) || ((programType == RECEIVE) && (rByte == A_SENDER)))
+				*(state++);
+			else{
+				printf("erro\n");  //TODO deu erro.
+			}*/
+
+			break;
+
+		case A_RC:
+
+			if (((type == UA_S) || (type == UA_R)) && rByte == UA_CODE)
+				*state = C_RC;
+
+			else if(type == SET && rByte == SET_CODE)
+				*state = C_RC;
+
+			else if(((type == DISC_S) || (type == DISC_R)) && rByte == DISC_CODE)
+				*state = C_RC;
+
+			else if(rByte == FLAG)
+				*state = F_RC;
+			else
+				*state = START_RC;
+
+			break;
+
+			/*if(((programType == SEND) && (rByte == A_RECEIVER)) || ((programType == RECEIVE) && (rByte == A_SENDER)))
+				*(state++);
+			else{
+				printf("erro\n");  //TODO deu erro.
+			}*/
+
+		case C_RC:
+			if ((type == UA_S && rByte == (A_SENDER^UA_CODE)) || (type == UA_R && rByte == (A_RECEIVER^UA_CODE))
+				|| (type == SET && rByte == (A_SENDER^SET_CODE)) || (type == DISC_S && rByte == (A_SENDER^DISC_CODE))
+				|| (type == DISC_R && rByte == (A_RECEIVER^DISC_CODE)))
+				*state = BCC;
+
+			else if (rByte == FLAG)
+				*state = F_RC;
+
+			else
+				*state = START_RC;
+
+			break;
+
+		case BCC:
+			if(rByte == FLAG)
+				*state = STOP_RC;
+			else
+				*state = START_RC;
+
+			break;
+
+		default:
+			break;
 	}
 }
 
+int validPacket(char *S){
+
+	printf("%02X\n", S[2]);
+	unsigned char control;
+	control = S[2] & 0x7F;
+	printf("%02X\n", control);
 
 
-/**
-* Type can be 0x03 if sent by SENDER, or received by RECEIVER == type 0
-* Or 0x01 if sent by RECEIVER, or received by SENDER == type 1
-*/
-char * createITrama(char * package, int package_length, int type)
-{
-	char * trama = malloc(sizeof(char)*(package_length + 6));
+	return (
+		(S[0] == FLAG) &&
+		(S[1] == A_SENDER) &&
+		(control == RR_0) &&
+		(S[3] == (S[1] ^ S[2])) &&
+		(S[4] == FLAG));
 
-	trama[0] = FLAG;
-	if(type == 0)
-		trama[1] = 0x03;
-	else if(type == 1)
-		trama[1] = 0x01;
-	else
-		return NULL;
-
-	/*
-	TODO
-	trama[2] ??
-	Aquele N(s) e N(r) estão sempre a alternar??
-	*/
-	trama[2] = 0x40; //PROVISORIO
-	trama[3] = trama[1]^trama[2];
-	trama[4] = *package;
-	trama[4+package_length] = 0x00 ^ *package;
-	trama[4+package_length+1] = FLAG;
-
-	return trama;
 }
-
-int verifyTrama(char * trama, int tramaSize)
-{
-	if(trama[0] != FLAG)
-	{
-		printf("FLAG WRONG: %d\n", trama[0]);
-		return FALSE;
-	}
-	if(trama[1] != A_SENDER)
-	{
-		printf("A_SENDER WRONG: %d\n", trama[1]);
-		return FALSE;
-	}
-
-	//TODO trama[2]
-
-	int ones = countOnes(trama[3]);
-	printf("number of ones of BCC: %d \n", ones);
-	printf("TRAMA: %02X %02X %02X %02X %02X \n", trama[0], trama[1], trama[2], trama[3], trama[4]);
-	if((trama[1]^trama[2]) != trama[3]) //Meaning a odd number of ones
-	{
-		printf("BCC WRONG: %02X %02X\n",trama[1]^trama[2], trama[3]);
-		return FALSE;
-	}
-	if(trama[tramaSize-1] != FLAG)
-	{
-		printf("END FLAG WRONG: %d\n", trama[tramaSize-1]);
-		return FALSE;
-	}
-	printf("GREAT SUCCESS: TRAMA OK \n");
-	return TRUE;
-}
-

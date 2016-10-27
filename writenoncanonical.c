@@ -7,15 +7,16 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdlib.h>
 #include "DataLink.h"
 
 int main(int argc, char** argv)
 {
-    char buf[255];
+  //  char buf[255];
     int fd;
-    
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
+
+    if ( (argc < 2) ||
+  	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
@@ -25,4 +26,22 @@ int main(int argc, char** argv)
 	printf("llopen finished \n");
 	close(fd);
 	return 0;
+
+  /*char package[5];
+  package[0] = FLAG;
+  package[1] = A_SENDER;
+  package[2] = 3;
+  package[3] = (package[1]^package[2]);
+  package[4] = FLAG;
+
+  validPacket(package);
+
+  package[2] = 5;
+
+  validPacket(package);
+
+  package[2] = 133;
+
+  validPacket(package);*/
+
 }

@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "DataLink.h"
 
 volatile int STOP=FALSE;
@@ -13,8 +14,8 @@ int flag=1;
 
 int main(int argc, char** argv)
 {
-	int fd, length;
-	char buf[255];
+	//char buf[255];
+	int fd;
 
 	  if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -25,8 +26,16 @@ int main(int argc, char** argv)
 
 	fd = llopen(argv[1], RECEIVE);
 
+	printf("file descriptor: %d\n", fd);
+
+	close(fd);
+	/*unsigned char s = 0;
+	char oi[255];
+	char buf2[10] = "1234567890";
+	createPacket(oi, buf2, 10, s << 6);*/
+
 	//llread(fd, buf);
-	
+
 	//write qualquer cena
 
 	return 0;
