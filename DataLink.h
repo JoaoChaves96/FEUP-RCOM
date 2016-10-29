@@ -28,7 +28,7 @@
 #define REJ_0 0x01
 #define REJ_1 0x81
 
-#define PACKET_LENGTH 5
+#define TRAMA_LENGTH 5
 
 #define ALARM_SEC 3
 #define MAX_RETRIES 3
@@ -36,10 +36,17 @@
 #define FAILED 0
 #define WAIT_ERROR -1
 
+#define ESCAPE 0x7d
+#define XOR_OCTET 0x20
+
+#define FLAG_STUFFED 1
+#define ESCAPE_STUFFED 2
+#define NOT_STUFFED 0
+
 int llopen(char * path, int type);
 
 int llwrite(int fd, char * buffer, int length);
 
-int llread(int fd, char* trama);
+int llread(int fd, char* packet);
 
 int llclose(int fd, int programType);

@@ -15,15 +15,15 @@ typedef enum{SET, UA_S, UA_R, DISC_S, DISC_R} Type;
 
 int fd;
 
-int createPacket(char *trama, char *buf, int length, char control);
+int createTrama(char *trama, char *buf, int length, char control);
 
-int receivePacket(int fd, char *trama);
+int receiveTrama(int fd, char *trama);
 
 int waitForAnAnswer(Type command);
 
 void updateState(State *state, Type type, unsigned char rByte);
 
-int validPacket(char *S);
+int validTrama(char *S);
 
 
 struct termios oldtio,newtio;
@@ -81,8 +81,8 @@ int llopen(char* path, int type)
 
 	if(type == SEND) //Sends the SET message and waits for an answer
 	{
-		write(fd, SET_PACKET, PACKET_LENGTH);
-		setAlarm(3, fd, SET_PACKET, PACKET_LENGTH);
+		write(fd, SET_PACKET, TRAMA_LENGTH);
+		setAlarm(3, fd, SET_PACKET, TRAMA_LENGTH);
 
 		ctype = UA_S;
 
@@ -103,7 +103,7 @@ int llopen(char* path, int type)
 			return -1;
 		}
 
-		write(fd, UA_SENDER_PACKET, PACKET_LENGTH); //Sends the UA back to the sender
+		write(fd, UA_SENDER_PACKET, TRAMA_LENGTH); //Sends the UA back to the sender
 	}
 
 	return fd;
@@ -115,21 +115,21 @@ int llwrite(int fd, char * buffer, int length){
 	unsigned char control = 0;
 	control <<=6;
 	int rByte,r, received;
-	char S[PACKET_LENGTH];
+	char S[TRAMA_LENGTH];
 
 
-	int size = createPacket(trama,buffer,length,control);
+	int size = createTrama(trama,buffer,length,control);
 
 	do{
 		write(fd,trama,size);
 		setAlarm(3, fd, trama, length);
 		rByte=0;
 
-		while(rByte != PACKET_LENGTH){
+		while(rByte != TRAMA_LENGTH){
 			r = read(fd,S+rByte,1);
 			if(!alarmActivated){
 				printf("Connection timed out...\n");
-				exit(1);
+				return -1;
 			}
 			if(r){
 				rByte++;
@@ -138,7 +138,7 @@ int llwrite(int fd, char * buffer, int length){
 
 		stopAlarm();
 
-		received = validPacket(S);
+		received = validTrama(S);
 
 		if(!received){
 			tcflush(fd, TCIOFLUSH);
@@ -150,12 +150,23 @@ int llwrite(int fd, char * buffer, int length){
 	return size;
 }
 
-int llread(int fd, char* trama){
+/**
+* Returns size of data blocks int the trama
+*/
+int llread(int fd, char* packet){
 	//int pSize;
 
 	/*do{
-		pSIze = receivePacket(fd, trama);
+		pSIze = receiveTrama(fd, trama);
 	}*/
+
+	//read
+
+	//destuff
+
+	//(TODO: O RECEIVE TRAMA ESTA INCORRETO. NAO TEM EM CONTA O STUFFING)
+
+	//Deconstruct header + tail
 
 	return 0;
 }
@@ -165,7 +176,7 @@ int llclose(int fd, int programType){
 	Type type;
 
 	if(programType == SEND){
-		write(fd, DISC_SENDER_PACKET, PACKET_LENGTH);
+		write(fd, DISC_SENDER_PACKET, TRAMA_LENGTH);
 
 		type = DISC_R;
 
@@ -174,7 +185,7 @@ int llclose(int fd, int programType){
 			return -1;
 		}
 
-		write(fd, UA_RECEIVER_PACKET, PACKET_LENGTH);
+		write(fd, UA_RECEIVER_PACKET, TRAMA_LENGTH);
 		sleep(2);
 	}
 	else if(programType == RECEIVE){
@@ -186,7 +197,7 @@ int llclose(int fd, int programType){
 			return -1;
 		}
 
-		write(fd, DISC_RECEIVER_PACKET, PACKET_LENGTH);
+		write(fd, DISC_RECEIVER_PACKET, TRAMA_LENGTH);
 
 		type = UA_R;
 
@@ -205,7 +216,7 @@ int llclose(int fd, int programType){
 	return 0;
 }
 
-int createPacket(char *trama, char *buf, int length, char control){
+int createTrama(char *trama, char *buf, int length, char control){
 
 	int i=0;
 	int count;
@@ -221,14 +232,26 @@ int createPacket(char *trama, char *buf, int length, char control){
 
 	i++;
 	trama[i]=BCC1;
+	if(BBC1 == FLAG || BCC1 == ESCAPE) //If it needs stuffing
+	{
+		stuffThatTrama(trama, i);
+	}
 
 	for(count =0; count < length; count++, i++){
 		BCC2 = BCC2 ^ buf[count];
 		trama[i] = buf[count];
+		if(trama[i] == FLAG || trama[i] == ESCAPE) //If it needs stuffing
+		{
+			stuffThatTrama(trama, i);
+		}
 	}
 
 	i++;
 	trama[i]=BCC2;
+	if(BCC2 == FLAG || BCC2 == ESCAPE) //If it needs stuffing
+	{
+		stuffThatTrama(trama, i);
+	}
 	i++;
 	trama[i]=FLAG;
 
@@ -236,7 +259,7 @@ int createPacket(char *trama, char *buf, int length, char control){
 
 }
 
-int receivePacket(int fd, char *trama){
+int receiveTrama(int fd, char *trama){
 
 	int i=0;
 	State state;
@@ -279,30 +302,30 @@ int receivePacket(int fd, char *trama){
 				}
 				break;
 
-				case C_RC:
-					if(rByte != FLAG){
-						trama[i] = rByte;
-						i++;
-						state = BCC;
-					}
-					else{
-						state = F_RC;
-					}
-					break;
+			case C_RC:
+				if(rByte != FLAG){
+					trama[i] = rByte;
+					i++;
+					state = BCC;
+				}
+				else{
+					state = F_RC;
+				}
+				break;
 
-				case BCC:
-					if(rByte == FLAG){
-						trama[i] = rByte;
-						i++;
-						state = STOP_RC;
-					}
-					else{
-						trama[i]=rByte;
-						i++;
-					}
-					break;
-					default:
-					break;
+			case BCC:
+				if(rByte == FLAG){
+					trama[i] = rByte;
+					i++;
+					state = STOP_RC;
+				}
+				else{
+					trama[i]=rByte;
+					i++;
+				}
+				break;
+			default:
+				break;
 
 		}
 	}
@@ -321,6 +344,7 @@ int waitForAnAnswer(Type command){
 
 	sleep(2);
 	while(state != STOP_RC){  //while it doesnt receive the STOP byte
+
 		r = read(fd, &rByte, 1);
 
 		if(alarmActivated){
@@ -419,7 +443,7 @@ void updateState(State *state, Type type, unsigned char rByte){
 	}
 }
 
-int validPacket(char *S){
+int validTrama(char *S){
 
 	printf("%02X\n", S[2]);
 	unsigned char control;
@@ -434,4 +458,44 @@ int validPacket(char *S){
 		(S[3] == (S[1] ^ S[2])) &&
 		(S[4] == FLAG));
 
+}
+
+void stuffThatTrama(char * trama, int index)
+{
+	char temp = trama[index];
+	trama[index] = ESCAPE;
+	trama[index+1] = temp ^ XOR_OCTET;
+	return;
+}
+
+void destuffThatTrama(char * trama, int tramaLength)
+{
+	int i;
+	for(i = 3; i < tramaLength; i++)
+	{
+		int verifyStuffing = isStuffed(trama, i, tramaLength);
+		if(verifyStuffing == FLAG_STUFFED)
+		{
+			//TODO DESTUFF
+		}
+		else if(verifyStuffing == ESCAPE_STUFFED)
+		{
+			//TODO DESTUFF
+		}
+	}
+}
+
+int isStuffed(char * trama, int index, int tramaLength)
+{
+	if(i != tramaLength)
+	{
+		if(trama[i] == ESCAPE && trama[i+1] == 0x5e)
+			return FLAG_STUFFED;
+		else if(trama[i] == ESCAPE && trama[i+1] == 0x5d)
+			return ESCAPE_STUFFED;
+		else
+			return NOT_STUFFED;
+	}
+	else
+		return NOT_STUFFED;
 }

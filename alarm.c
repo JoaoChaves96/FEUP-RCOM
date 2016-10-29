@@ -1,6 +1,5 @@
 #include "alarm.h"
 
-
 int fd;
 unsigned int length;
 char * buffer;
@@ -14,7 +13,6 @@ void handler() //Only calls handler when Timeout
 	}
 	else{
 		printf("Didn´t get a response. Retrying...\n");
-		retry();
 		alarm(waitT);
 	}
 
@@ -29,7 +27,7 @@ void setAlarm(int wait, int filedes, char * buf, int buf_length)
 	length = buf_length;
 	fd = filedes;
 
-	alarmActivated = TRUE;
+	alarmActivated = FALSE;
 	//sigaction(SIGALRM, &action, NULL);
 	n_timeouts = 0;
 	waitT = wait;
