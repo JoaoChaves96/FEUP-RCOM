@@ -16,8 +16,28 @@ struct Application{
 	int filedes;
 	char* fileName;
 	char * buf;
+	long int bufPointer;
 	int nameLength;
 	unsigned int fileSize;
 };
+
+/**
+* Return: 0 = Sucess; -1 = error
+*/
+int startApp(struct Application * app, const char * path, int type, const char * fileName, unsigned int nameLength);
+
+int openW(struct Application * app, const char * path, const char * filename, unsigned int nameLength);
+
+int openR(struct Application * app, const char *path);
+
+int writeApp(struct Application app);
+
+int readApp(struct Application app);
+
+void startPacket(struct Application app, char * c_packet, char CONTROL_FLAG);
+
+void dataPacket(struct Application * app, char * d_packet, int serialNumber);
+
+int verifyControlPacket(char * packet, int type);
 
 #endif

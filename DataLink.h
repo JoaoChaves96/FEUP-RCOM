@@ -43,7 +43,10 @@
 #define ESCAPE_STUFFED 2
 #define NOT_STUFFED 0
 
-int llopen(char * path, int type);
+/**
+* path = path to serial port
+*/
+int llopen(const char * path, int type);
 
 int llwrite(int fd, char * buffer, int length);
 

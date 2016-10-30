@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "DataLink.h"
+#include "ApplicationLayer.h"
 
 volatile int STOP=FALSE;
 volatile int SET_RECEIVED=FALSE;
@@ -15,7 +16,9 @@ int flag=1;
 int main(int argc, char** argv)
 {
 	//char buf[255];
-	int fd;
+	//int fd;
+
+	struct Application app;
 
 	  if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -24,12 +27,12 @@ int main(int argc, char** argv)
       exit(1);
     }
 
-	fd = llopen(argv[1], RECEIVE);
+	/*fd = llopen(argv[1], RECEIVE);
 
 	printf("file descriptor: %d\n", fd);
 
 	close(fd);
-	/*unsigned char s = 0;
+	unsigned char s = 0;
 	char oi[255];
 	char buf2[10] = "1234567890";
 	createPacket(oi, buf2, 10, s << 6);*/
@@ -37,6 +40,14 @@ int main(int argc, char** argv)
 	//llread(fd, buf);
 
 	//write qualquer cena
+
+	int startAppResult = startApp(&app, argv[1], RECEIVE, "pinguim.gif", strlen("pinguim.gif"));
+	printf("main: startApp result=%d\n", startAppResult);
+	int readAppResult = readApp(app);
+	if(readAppResult == -1)
+	{
+		printf("main: readApp failed\n");
+	}
 
 	return 0;
 

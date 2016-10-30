@@ -5,11 +5,12 @@ unsigned int length;
 char * buffer;
 
 void handler() //Only calls handler when Timeout
-{	
+{
 	alarmActivated = FALSE;
 	if(n_timeouts >= MAX_TIMEOUTS){
 		printf("connected exceeded max timeout...\n");
-		exit(1);
+		//exit(1);
+		alarmActivated = TRUE;
 	}
 	else{
 		printf("Didn´t get a response. Retrying...\n");
@@ -19,16 +20,15 @@ void handler() //Only calls handler when Timeout
 	n_timeouts++;
 }
 
-void setAlarm(int wait, int filedes, char * buf, int buf_length)
+void setAlarm(int wait)
 {
 
-
+/*
 	buffer = buf;
 	length = buf_length;
 	fd = filedes;
-
+*/
 	alarmActivated = FALSE;
-	//sigaction(SIGALRM, &action, NULL);
 	n_timeouts = 0;
 	waitT = wait;
 	alarm(waitT);
@@ -50,8 +50,9 @@ void configureAlarm()
 int getN_timouts(){
 	return n_timeouts;
 }
-
+/*
 void retry(){
 	printf("Trying to write again...\n");
 	write(fd, buffer, length);
 }
+*/

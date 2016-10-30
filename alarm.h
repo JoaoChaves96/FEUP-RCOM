@@ -20,11 +20,10 @@ int waitT;
 
 void handler();
 
-void setAlarm(int wait, int filedes, char * buf, int buf_length);
+void setAlarm(int wait); //, int filedes, char * buf, int buf_length);
 
 void stopAlarm();
 
 void configureAlarm();
 
-void retry();
-
+//void retry();

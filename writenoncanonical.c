@@ -9,11 +9,11 @@
 #include <signal.h>
 #include <stdlib.h>
 #include "DataLink.h"
+#include "ApplicationLayer.h"
 
 int main(int argc, char** argv)
 {
-  //  char buf[255];
-    int fd;
+  struct Application app;
 
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -22,9 +22,11 @@ int main(int argc, char** argv)
       exit(1);
     }
 
-	fd = llopen(argv[1], SEND);
-	printf("llopen finished \n");
-	close(fd);
+	//int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif",11);
+  int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif",strlen("pinguim.gif"));
+  printf("main: startApp result=%d", startAppResult);
+  writeApp(app);
+
 	return 0;
 
   /*char package[5];
