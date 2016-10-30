@@ -183,7 +183,7 @@ int llread(int fd, char* packet){
 R = 1;
 unsigned char control;
 int stuffedSize, tramaSize, valid, r;
-char trama[255];
+char trama[512];
 unsigned char S[5];
 
 printf("llread: Initializing...\n");
@@ -199,6 +199,7 @@ do{
 	printf("llread: tramaSize=%d",tramaSize);
 	printf("llread: destuffed Trama\n");
 	r = deconstructTrama(packet, trama, tramaSize, R);
+	printf("llread: size of trama info: %d\n", r);
 	printf("llread: deconstructed Trama\n");
 	if(r >1){ //Valid packet
 		valid = TRUE;
@@ -364,7 +365,7 @@ int receiveTrama(int fd, char *trama){
 
 		if(r)
 		{
-			printf("receiveTrama: found byte %02x\n", rByte);
+			//printf("receiveTrama: found byte %02x\n", rByte);
 			switch(state){
 				case START_RC:
 					if(rByte == FLAG){
@@ -731,7 +732,7 @@ int deconstructTrama(char * dest, char * src, int length, unsigned char R){
 		printf("deconstructTrama: parity check BCC2 failed\n");
 		return -1;
 	}
-
+	printf("deconstructTrama: BCC2_INDEX = %d,   D1_INDEX = %d\n", BCC2_INDEX, D1_INDEX);
 	return BCC2_INDEX - D1_INDEX; //Length of the packet
 }
 

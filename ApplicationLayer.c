@@ -211,7 +211,9 @@ int readApp(struct Application app)
 			printf("readApp: datapacket with error. llread failed\n");
 			return -1;
 		}
-		fwrite(&dataPacket[4], sizeof(char), packetSize-MIN_DATA_P_SIZE, file); //Writes the data to the new file
+		printf("readApp: size of data: %d\n", strlen(&dataPacket[4]));
+		fwrite(&dataPacket[4], sizeof(char), packetSize + 1, file); //Writes the data to the new file
+		//fprintf(file, "%")
 	}
 
 	if(llread(app.filedes, endPacket) == -1) //Reads the end packet
@@ -255,7 +257,7 @@ void dataPacket(struct Application * app, char * d_packet, int serialNumber){
 	printf("dataPacket: CONTROL, N, L2, L1 defined\n");
 	memcpy(&d_packet[4], app->buf+app->bufPointer, PACKET_SIZE); //TODO TEMPORARIO. TEM DE SER TROCADO POR PACKETS MAIS RECENTES
 	app->bufPointer += PACKET_SIZE;
-	printf("dataPacket: bufPointer=%d\n", app->bufPointer);
+	printf("dataPacket: bufPointer=%lu\n", app->bufPointer);
 	printf("dataPacket: DATA defined\ndataPacket: Done. Returning...\n");
 	return;
 

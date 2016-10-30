@@ -41,7 +41,7 @@ int main(int argc, char** argv)
 
 	//write qualquer cena
 
-	int startAppResult = startApp(&app, argv[1], RECEIVE, "pinguim.gif", strlen("pinguim.gif"));
+	int startAppResult = startApp(&app, argv[1], RECEIVE, "file.txt", strlen("file.txt"));
 	printf("main: startApp result=%d\n", startAppResult);
 	int readAppResult = readApp(app);
 	if(readAppResult == -1)
