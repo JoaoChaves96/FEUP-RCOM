@@ -106,6 +106,9 @@ int writeApp(struct Application app){
 	int packetsToSend = app.fileSize / PACKET_SIZE;
 	int bytesLeft = app.fileSize % PACKET_SIZE;
 
+	if(bytesLeft != 0)
+		packetsToSend += 1;
+
 	printf("writeApp: packetsToSend=%d, bytesLeft=%d\n", packetsToSend, bytesLeft);
 	//Sends the Data Packets
 	int i;
@@ -200,7 +203,7 @@ int readApp(struct Application app)
 
 	//int numPackets = 1;
 	//NAO APAGAR!!!!!!
-	int numPackets = ceil((float) (fileSize/PACKET_SIZE));
+	int numPackets = ceil(((float)fileSize/(float)PACKET_SIZE));
 	int i;
 	char * dataPacket = malloc(4+MAX_DATA_P_SIZE);
 	for(i = 0; i < numPackets; i++) //Reads each packet, and copies the data to the new file

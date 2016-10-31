@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     }
 
 	//int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif",11);
-  int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif", strlen("pinguim.gif"));
+  int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif", strlen("pinguim.gif") + 1);
   printf("main: startApp result=%d", startAppResult);
   writeApp(app);
 
