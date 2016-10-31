@@ -1,14 +1,14 @@
 #include "DataLink.h"
 
-char SET_PACKET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
-char UA_SENDER_PACKET[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
-char UA_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, UA_CODE, A_RECEIVER ^ UA_CODE, FLAG};
-char RR0_PACKET[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
-char RR1_PACKET[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
-char REJ0_PACKET[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
-char REJ1_PACKET[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
-char DISC_SENDER_PACKET[] = {FLAG, A_SENDER, DISC_CODE, A_SENDER^DISC_CODE, FLAG};
-char DISC_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, DISC_CODE, A_RECEIVER^DISC_CODE, FLAG};
+unsigned char SET_PACKET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
+unsigned char UA_SENDER_PACKET[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
+unsigned char UA_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, UA_CODE, A_RECEIVER ^ UA_CODE, FLAG};
+unsigned char RR0_PACKET[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
+unsigned char RR1_PACKET[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
+unsigned char REJ0_PACKET[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
+unsigned char REJ1_PACKET[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
+unsigned char DISC_SENDER_PACKET[] = {FLAG, A_SENDER, DISC_CODE, A_SENDER^DISC_CODE, FLAG};
+unsigned char DISC_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, DISC_CODE, A_RECEIVER^DISC_CODE, FLAG};
 
 typedef enum{START_RC, F_RC, A_RC, C_RC, BCC,STOP_RC} State;
 typedef enum{SET, UA_S, UA_R, DISC_S, DISC_R} Type;
@@ -16,30 +16,30 @@ typedef enum{SET, UA_S, UA_R, DISC_S, DISC_R} Type;
 int fd;
 static unsigned char R;
 
-int receiveTrama(int fd, char *trama);
+int receiveTrama(int fd, unsigned char *trama);
 
 int waitForAnAnswer(Type command);
 
 void updateState(State *state, Type type, unsigned char rByte);
 
-int validTrama(char *S);
+int validTrama(unsigned char *S);
 
-void stuffTrama(char * trama, int * index);
+void stuffTrama(unsigned char * trama, int * index);
 
-int isStuffed(char * trama, int index, int tramaLength);
+int isStuffed(unsigned char * trama, int index, int tramaLength);
 
-int deconstructTrama(char * dest, char * src, int length, unsigned char R);
+int deconstructTrama(unsigned char * dest, unsigned char * src, int length, unsigned char R);
 
-int checkBytes(char * buf, int end,unsigned char S);
+int checkBytes(unsigned char * buf, int end,unsigned char S);
 
-int destuffTrama(char * trama, int tramaLength);
+int destuffTrama(unsigned char * trama, int tramaLength);
 
-int createTrama(char *trama, char *packet, int packetLength, char control);
+int createTrama(unsigned char *trama, unsigned char *packet, int packetLength, unsigned char control);
 
 struct termios oldtio,newtio;
 
 
-int llopen(const char* path, int type)
+int llopen(const unsigned char* path, int type)
 {
 
 	Type ctype;
@@ -69,12 +69,12 @@ int llopen(const char* path, int type)
 
    	if (type == RECEIVE){
    	newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-   	newtio.c_cc[VMIN]     = 0;   /* non-block (0 characters until de-block) */
+   	newtio.c_cc[VMIN]     = 1;   /* non-block (0 characters until de-block) */
    	}
 
    	if (type == SEND){
    		newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-   		newtio.c_cc[VMIN]     = 0;   /* non-block (0 characters until de-block) */
+   		newtio.c_cc[VMIN]     = 1;   /* non-block (0 characters until de-block) */
    	}
 
 	tcflush(fd, TCIOFLUSH); //Cleans the buffer
@@ -124,19 +124,30 @@ int llopen(const char* path, int type)
 	return fd;
 }
 
-int llwrite(int fd, char * packet, int length){
+int llwrite(int fd, unsigned char * packet, int length){
 	static unsigned char x = 0;
-	char trama[255]; //tem de ser mudado
+	unsigned char trama[255]; //tem de ser mudado
 	unsigned char control = 0;
 	control <<=6;
 	int rByte,r, received = 1;
-	char S[TRAMA_LENGTH];
-
+	unsigned char S[TRAMA_LENGTH];
+	int j;
+	printf("packet: ");
+	for(j = 0; j < length; j++){
+		printf("%d %02X\t ",j, 0xFF & packet[j]);
+	}
+	printf("\n");
 	int size = createTrama(trama,packet,length,control);
 	printf("llwrite: created trama with size %d\n", size);
 
 	do{
 		write(fd,trama,size);
+		/*int i = 0;
+		for(i = 0; i < size; i++) 
+			printf("0x%02X\t", 0xFF & trama[i]);
+		printf("\n");*/
+
+
 		printf("llwrite: Trama sent. Waiting for answer...\n");
 		if(received == 1) //To avoid setting the alarm again when an error occurs
 			setAlarm(ALARM_SEC);
@@ -167,6 +178,11 @@ int llwrite(int fd, char * packet, int length){
 			tcflush(fd, TCIOFLUSH);
 		}
 	}while(received != 1);
+		printf("trama ");
+		for(j = 4; j < length; j++){
+		printf("%d %02X\t ",j-4, 0xFF & trama[j]);
+	}
+	printf("\n");
 	stopAlarm();
 	printf("llwrite: Valid answer!\n");
 	x = (x+1) % 2;
@@ -178,12 +194,12 @@ int llwrite(int fd, char * packet, int length){
 /**
 * Returns size of data blocks int the trama
 */
-int llread(int fd, char* packet){
+int llread(int fd, unsigned char* packet){
 
 R = 1;
 unsigned char control;
 int stuffedSize, tramaSize, valid, r;
-char trama[512];
+unsigned char trama[512];
 unsigned char S[5];
 
 printf("llread: Initializing...\n");
@@ -281,7 +297,7 @@ int llclose(int fd, int programType){
 * buf: packet created before
 * control: 0 or 1, just for verification purposes
 */
-int createTrama(char *trama, char *packet, int packetLength, char control){
+int createTrama(unsigned char *trama, unsigned char *packet, int packetLength, unsigned char control){
 	printf("createTrama: Initializing...\n");
 	int i=0;
 	int count;
@@ -316,9 +332,9 @@ int createTrama(char *trama, char *packet, int packetLength, char control){
 		//printf("createTrama: trama[%d] atributed\n", i);
 		if(trama[i] == FLAG || trama[i] == ESCAPE) //If it needs stuffing
 		{
-			//printf("createTrama: trama[%d] needs stuffing\n", i);
+			printf("createTrama: trama[%d] needs stuffing\n", i);
 			stuffTrama(trama, &i);
-			//printf("createTrama: trama[%d] stuffed\n", i);
+			printf("createTrama: trama[%d] stuffed\n", i);
 		}
 	}
 
@@ -343,7 +359,7 @@ int createTrama(char *trama, char *packet, int packetLength, char control){
 
 }
 
-int receiveTrama(int fd, char *trama){
+int receiveTrama(int fd, unsigned char *trama){
 
 	int i=0;
 	int r=0;
@@ -564,7 +580,7 @@ void updateState(State *state, Type type, unsigned char rByte){ //TheUpdate
 /**
 * Return: 1 if valid
 */
-int validTrama(char *answer){
+int validTrama(unsigned char *answer){
 	printf("validTrama: Validating answer...\n");
 	//printf("%02X\n", S[2]);
 	unsigned char control;
@@ -603,20 +619,20 @@ int validTrama(char *answer){
 
 }
 
-void stuffTrama(char * trama, int * index)
+void stuffTrama(unsigned char * trama, int * index)
 {
-	char temp = trama[*index];
+	unsigned char temp = trama[*index];
 	trama[*index] = ESCAPE;
 	trama[(*index)+1] = temp ^ XOR_OCTET;
 	(*index)++; //To avoid conflicts outside the function
 	return;
 }
 
-int destuffTrama(char * trama, int tramaLength)
+int destuffTrama(unsigned char * trama, int tramaLength)
 {
 	int i, j=3;
 	int bytesAfterDestuffing = tramaLength;
-	char * temp = malloc(tramaLength);
+	unsigned char * temp = malloc(tramaLength);
 	//memcpy(temp, trama, tramaLength);
 	temp[0] = trama[0];
 	temp[1] = trama[1];
@@ -681,7 +697,7 @@ int destuffTrama(char * trama, int tramaLength)
 	return bytesAfterDestuffing;
 }
 
-int isStuffed(char * trama, int index, int tramaLength)
+int isStuffed(unsigned char * trama, int index, int tramaLength)
 {
 	//printf("isStuffed: index=%d, tramaLength=%d\n", index, tramaLength);
 	if(index != tramaLength)
@@ -700,7 +716,7 @@ int isStuffed(char * trama, int index, int tramaLength)
 /**
 * Return: SIZE OF packet (> 1) - ok, 1 - repeated, -1 - invalid
 */
-int deconstructTrama(char * dest, char * src, int length, unsigned char R){
+int deconstructTrama(unsigned char * dest, unsigned char * src, int length, unsigned char R){
 	int D1_INDEX = 4; //(BCC index = 3) + 1
 	int END_INDEX = length-1;
 	int BCC2_INDEX = length -2;
@@ -736,7 +752,7 @@ int deconstructTrama(char * dest, char * src, int length, unsigned char R){
 	return BCC2_INDEX - D1_INDEX; //Length of the packet
 }
 
-int checkBytes(char * src, int end, unsigned char S){
+int checkBytes(unsigned char * src, int end, unsigned char S){
 	printf("END %d\n", end);
 	printf("checkBytes: src=%02X %02X %02X %02X %02X \n", src[0], src[1], src[2], src[3], src[end]);
 	printf("checkBytes: supposed=%02X %02X %02X %02X %02X \n", FLAG, A_SENDER, S << 6, A_SENDER^(S<<6), FLAG);
