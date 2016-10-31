@@ -14,8 +14,8 @@
 struct Application{
 	int status;
 	int filedes;
-	unsigned char* fileName;
-	unsigned char * buf;
+	char* fileName;
+	char * buf;
 	long int bufPointer;
 	int nameLength;
 	unsigned int fileSize;
@@ -24,17 +24,17 @@ struct Application{
 /**
 * Return: 0 = Sucess; -1 = error
 */
-int startApp(struct Application * app, const unsigned char * path, int type, const unsigned char * fileName, unsigned int nameLength);
+int startApp(struct Application * app, const char * path, int type, const char * fileName, unsigned int nameLength);
 
-int openW(struct Application * app, const unsigned char * path, const unsigned char * filename, unsigned int nameLength);
+int openW(struct Application * app, const char * path, const char * filename, unsigned int nameLength);
 
-int openR(struct Application * app, const unsigned char *path);
+int openR(struct Application * app, const char *path);
 
 int writeApp(struct Application app);
 
 int readApp(struct Application app);
 
-void startPacket(struct Application app, unsigned char * c_packet, unsigned char CONTROL_FLAG);
+void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_FLAG);
 
 void dataPacket(struct Application * app, unsigned char * d_packet, int serialNumber, int length);
 

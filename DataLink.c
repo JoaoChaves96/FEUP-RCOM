@@ -1,14 +1,14 @@
 #include "DataLink.h"
 
-unsigned char SET_PACKET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
-unsigned char UA_SENDER_PACKET[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
-unsigned char UA_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, UA_CODE, A_RECEIVER ^ UA_CODE, FLAG};
-unsigned char RR0_PACKET[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
-unsigned char RR1_PACKET[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
-unsigned char REJ0_PACKET[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
-unsigned char REJ1_PACKET[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
-unsigned char DISC_SENDER_PACKET[] = {FLAG, A_SENDER, DISC_CODE, A_SENDER^DISC_CODE, FLAG};
-unsigned char DISC_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, DISC_CODE, A_RECEIVER^DISC_CODE, FLAG};
+char SET_PACKET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
+char UA_SENDER_PACKET[] = {FLAG, A_SENDER, UA_CODE, A_SENDER ^ UA_CODE, FLAG};
+char UA_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, UA_CODE, A_RECEIVER ^ UA_CODE, FLAG};
+char RR0_PACKET[] = {FLAG, A_SENDER, RR_0, A_SENDER^RR_0, FLAG}; //TODO verificar se o BCC dá numero par de 1
+char RR1_PACKET[] = {FLAG, A_SENDER, RR_1, A_SENDER^RR_1, FLAG};
+char REJ0_PACKET[] = {FLAG, A_SENDER, REJ_0, A_SENDER^REJ_0, FLAG};
+char REJ1_PACKET[] = {FLAG, A_SENDER, REJ_1, A_SENDER^REJ_1, FLAG};
+char DISC_SENDER_PACKET[] = {FLAG, A_SENDER, DISC_CODE, A_SENDER^DISC_CODE, FLAG};
+char DISC_RECEIVER_PACKET[] = {FLAG, A_RECEIVER, DISC_CODE, A_RECEIVER^DISC_CODE, FLAG};
 
 typedef enum{START_RC, F_RC, A_RC, C_RC, BCC,STOP_RC} State;
 typedef enum{SET, UA_S, UA_R, DISC_S, DISC_R} Type;
@@ -39,7 +39,7 @@ int createTrama(unsigned char *trama, unsigned char *packet, int packetLength, u
 struct termios oldtio,newtio;
 
 
-int llopen(const unsigned char* path, int type)
+int llopen(const char* path, int type)
 {
 
 	Type ctype;

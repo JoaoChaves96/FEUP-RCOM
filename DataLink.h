@@ -46,7 +46,7 @@
 /**
 * path = path to serial port
 */
-int llopen(const unsigned char * path, int type);
+int llopen(const char * path, int type);
 
 int llwrite(int fd, unsigned char * buffer, int length);
 

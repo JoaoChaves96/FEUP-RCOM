@@ -11,7 +11,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-int startApp(struct Application * app, const unsigned char * path, int type, const unsigned char * fileName, unsigned int nameLength){
+int startApp(struct Application * app, const char * path, int type, const char * fileName, unsigned int nameLength){
 	int r=0;
 
 	app->status = type;
@@ -34,7 +34,7 @@ int startApp(struct Application * app, const unsigned char * path, int type, con
 
 }
 
-int openW(struct Application * app, const unsigned char * path, const unsigned char * filename, unsigned int nameLength){
+int openW(struct Application * app, const char * path, const char * filename, unsigned int nameLength){
 	FILE * file;
 	app->nameLength = nameLength;
 	app->fileName = (char*) malloc(sizeof(app->nameLength));
@@ -72,7 +72,7 @@ int openW(struct Application * app, const unsigned char * path, const unsigned c
 	return 0;
 }
 
-int openR(struct Application * app, const unsigned char *path){
+int openR(struct Application * app, const char *path){
 	printf("openR: calling llopen\n");
 	app->filedes = llopen(path, RECEIVE);
 
@@ -125,7 +125,7 @@ int writeApp(struct Application app){
 		else
 			size = PACKET_SIZE;
 		//size = app.fileSize;
-		unsigned char * d_packet = (char *)malloc(sizeof(int)*(size+MIN_DATA_P_SIZE));
+		unsigned char * d_packet = (unsigned char *)malloc(sizeof(int)*(size+MIN_DATA_P_SIZE));
 
 		fprintf(logs, "Packet Serial Number: %d with size= %d\n", i, size);
 
@@ -193,7 +193,7 @@ int readApp(struct Application app)
 	int nameSize;
 	memcpy(&fileSize, &startPacket[3], startPacket[2]); //Reads the file size from the packet
 	memcpy(&nameSize, &startPacket[8], 1); //Reads the file's name size from the packet
-	unsigned char * fileName = malloc(nameSize);
+	char * fileName = malloc(nameSize);
 	memcpy(fileName, &startPacket[9], startPacket[8]); //Reads the file's name from the packet
 	app.fileName = fileName; //TODO e necessario alterar a app? Nao seria melhor passa-la por referencia?
 	printf("readApp: retrieved file information from StartPacket\n");
@@ -214,8 +214,8 @@ int readApp(struct Application app)
 			printf("readApp: datapacket with error. llread failed\n");
 			return -1;
 		}
-		printf("readApp: size of data: %d\n", strlen(&dataPacket[4]));
-		fwrite(&dataPacket[4], sizeof(char), packetSize + 1, file); //Writes the data to the new file
+		//printf("readApp: size of data: %d\n", strlen(&dataPacket[4]));
+		fwrite(&dataPacket[4], sizeof(unsigned char), packetSize + 1, file); //Writes the data to the new file
 		//fprintf(file, "%")
 	}
 
@@ -234,7 +234,7 @@ int readApp(struct Application app)
 
 }
 
-void startPacket(struct Application app, unsigned char * c_packet, unsigned char CONTROL_FLAG){
+void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_FLAG){
 	printf("startPacket: Initializing...\n");
 	c_packet[0] = CONTROL_FLAG;
 	c_packet[1] = 0;
