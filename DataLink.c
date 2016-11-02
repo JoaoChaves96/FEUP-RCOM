@@ -274,7 +274,7 @@ do{
 
 	S[0] = FLAG;
 	S[1] = A_SENDER;
-	printf("control byte sent: %02X\n", control);
+	//printf("control byte sent: %02X\n", control);
 	S[2] = control;
 	S[3] = S[1] ^ S[2];
 	S[4] = FLAG;
@@ -536,13 +536,13 @@ int waitForAnAnswer(Type command){
 
 	//sleep(2);
 	//setAlarm(ALARM_SEC);
-	printf("waitForAnAnswer: Alarm set\n");
+	//printf("waitForAnAnswer: Alarm set\n");
 	while(state != STOP_RC){  //while it doesnt receive the STOP byte
-		printf("waitforananswer: before read\n");
+		//printf("waitforananswer: before read\n");
 		r = read(fd, &rByte, 1);
-		printf("waitforananswer: alarmactivated: %d\n", alarmActivated);
+		//printf("waitforananswer: alarmactivated: %d\n", alarmActivated);
 		if(alarmActivated){
-			printf("waitForAnAnswer: Alarm Activated \n");
+		//	printf("waitForAnAnswer: Alarm Activated \n");
 			return -1;
 			//setAlarm(3);
 			//printf("Connection timed out...");
@@ -552,9 +552,9 @@ int waitForAnAnswer(Type command){
 		if(r)
 		{
 			updateState(&state, command, rByte);
-			printf("waitForAnAnswer: Updated state \n");
+		//	printf("waitForAnAnswer: Updated state \n");
 			//setAlarm(ALARM_SEC);
-			printf("waitForAnAnswer: Alarm set\n");
+		//	printf("waitForAnAnswer: Alarm set\n");
 		}
 	}
 
@@ -562,7 +562,7 @@ int waitForAnAnswer(Type command){
 
 	//stopAlarm();
 
-	printf("waitForAnAnswer: Stopped Alarm \n");
+	//printf("waitForAnAnswer: Stopped Alarm \n");
 	return 0;
 }
 

@@ -1,14 +1,14 @@
 CC=gcc
 CFLAGS = -lm -Wall
 
-all: writenoncanonical noncanonical
+all: send receive
 
-writenoncanonical: DataLink.h writenoncanonical.c alarm.h ApplicationLayer.h Statistics.h
-	$(CC) writenoncanonical.c DataLink.c alarm.c ApplicationLayer.c Statistics.c -o writenoncanonical $(CFLAGS)
+send: DataLink.h writenoncanonical.c alarm.h ApplicationLayer.h Statistics.h
+	$(CC) writenoncanonical.c DataLink.c alarm.c ApplicationLayer.c Statistics.c -o send $(CFLAGS)
 
-noncanonical: DataLink.h noncanonical.c alarm.h ApplicationLayer.h Statistics.h
-	$(CC) noncanonical.c DataLink.c alarm.c ApplicationLayer.c Statistics.c -o noncanonical $(CFLAGS)
+receive: DataLink.h noncanonical.c alarm.h ApplicationLayer.h Statistics.h
+	$(CC) noncanonical.c DataLink.c alarm.c ApplicationLayer.c Statistics.c -o receive $(CFLAGS)
 
 clean:
-	rm -f writenoncanonical
-	rm -f noncanonical
+	rm -f send
+	rm -f receive

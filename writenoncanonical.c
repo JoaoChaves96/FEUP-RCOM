@@ -17,15 +17,15 @@ int main(int argc, char** argv)
   struct Application app;
   struct Statistics stats;
 
-    if ( (argc < 2) ||
+    if ( (argc < 3) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
-      printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
+      printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1  file.gif\n");
       exit(1);
     }
 
 	//int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif",11);
-  int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif", strlen("pinguim.gif") + 1);
+  int startAppResult = startApp(&app, argv[1], SEND, argv[2], strlen(argv[2]) + 1);
   printf("main: startApp result=%d", startAppResult);
   if(startAppResult == -1)
   {
