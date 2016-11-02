@@ -23,9 +23,16 @@ int main(int argc, char** argv)
     }
 
 	//int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif",11);
-  int startAppResult = startApp(&app, argv[1], SEND, "test.txt", strlen("test.txt") + 1);
+  int startAppResult = startApp(&app, argv[1], SEND, "pinguim.gif", strlen("pinguim.gif") + 1);
   printf("main: startApp result=%d", startAppResult);
-  writeApp(app);
+  if(startAppResult == -1)
+  {
+    printf("main: startApp failed \n");
+    return -1;
+  }
+  int writeAppResult = writeApp(app);
+  if(writeAppResult == -1)
+  return -1;
 
 	return 0;
 

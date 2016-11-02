@@ -18,12 +18,12 @@ int alarmActivated;
 int n_timeouts;
 int waitT;
 
-void handler();
+void handleAlarm();
 
-void setAlarm(int wait); //, int filedes, char * buf, int buf_length);
+void setAlarm(void (*func) (char *, unsigned int), char * buf, unsigned int n_length); //, int filedes, char * buf, int buf_length);
 
 void stopAlarm();
 
-void configureAlarm();
+void configureAlarm(unsigned int waitTime);
 
 //void retry();

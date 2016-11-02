@@ -43,10 +43,15 @@ int main(int argc, char** argv)
 
 	int startAppResult = startApp(&app, argv[1], RECEIVE, "file.txt", strlen("file.txt"));
 	printf("main: startApp result=%d\n", startAppResult);
+	if(startAppResult == -1)
+	{
+		return -1;
+	}
 	int readAppResult = readApp(app);
 	if(readAppResult == -1)
 	{
 		printf("main: readApp failed\n");
+		return -1;
 	}
 
 	return 0;

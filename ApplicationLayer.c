@@ -17,19 +17,19 @@ int startApp(struct Application * app, const char * path, int type, const char *
 	app->status = type;
 	app->bufPointer = 0;
 
-	printf("startApp: %d type\n", type);
+	//printf("startApp: %d type\n", type);
 	if(type == SEND){
-		printf("startApp: SEND\nstartApp: calling openW\n");
+		//printf("startApp: SEND\nstartApp: calling openW\n");
 		r = openW(app, path, fileName, nameLength);
-		printf("startApp: end openW\n");
+		//printf("startApp: end openW\n");
 	}
 	else if (type == RECEIVE){
-		printf("startApp: RECEIVE\nstartApp: calling openR\n");
+		//printf("startApp: RECEIVE\nstartApp: calling openR\n");
 		r = openR(app, path);
-		printf("startApp: end openR\n");
+		//printf("startApp: end openR\n");
 		//printf("r: %d\n", r);
 	}
-	printf("startApp: Returning...\n");
+	//printf("startApp: Returning...\n");
 	return r;
 
 }
@@ -45,7 +45,7 @@ int openW(struct Application * app, const char * path, const char * filename, un
 	strcpy(app->fileName, filename);
 
 	file = fopen(app->fileName, "rb"); // non text file
-	printf("openW: opened %s\n",app->fileName);
+	//printf("openW: opened %s\n",app->fileName);
 	if(file == NULL){
 		printf("openW: file NULL. Returning...\n");
 		return -1;
@@ -89,7 +89,7 @@ int openR(struct Application * app, const char *path){
 int writeApp(struct Application app){
 	int pSize = MIN_CONTROL_P_SIZE + app.nameLength;
 
-	unsigned char *c_packet = malloc(pSize);
+	char *c_packet = malloc(pSize);
 	printf("writeApp: controlPacket allocated\n");
 	startPacket(app, c_packet, START);
 	printf("writeApp: name length: %d\n", c_packet[8]);
@@ -103,16 +103,24 @@ int writeApp(struct Application app){
 	//int packetsToSend = 1;
 	/*
 	----- NAO APAGAR!!!! -------*/
-	int packetsToSend = app.fileSize / PACKET_SIZE;
-	int bytesLeft = app.fileSize % PACKET_SIZE;
+	int packetsToSend;
+	int bytesLeft;
+	if(app.fileSize < PACKET_SIZE){
+		packetsToSend = 1;
+		bytesLeft = app.fileSize;
+	}
+	else{
+		packetsToSend = app.fileSize / PACKET_SIZE;
+		bytesLeft = app.fileSize % PACKET_SIZE;
 
-	if(bytesLeft != 0)
-		packetsToSend += 1;
+		if(bytesLeft != 0) //To send the last byte
+			packetsToSend += 1;
+	}
 
-	printf("writeApp: packetsToSend=%d, bytesLeft=%d\n", packetsToSend, bytesLeft);
+	printf("writeApp: packetsToSend=%d, bytesLeft=%d\n", packetsToSend, bytesLeft); //Packets to send = 110
 	//Sends the Data Packets
 	int i;
-	int size;
+	int packetDataSize;
 	FILE* logs = fopen("logsfixes.txt", "w");
 	for(i = 0; i < packetsToSend; i++)
 	{
@@ -120,19 +128,18 @@ int writeApp(struct Application app){
 		if((i == packetsToSend-1) && bytesLeft != 0) //Last Byte
 		{
 			printf("writeApp: Last sent packet size\n");
-			size = bytesLeft;
+			packetDataSize = bytesLeft;
 		}
 		else
-			size = PACKET_SIZE;
+			packetDataSize = PACKET_SIZE;
 		//size = app.fileSize;
-		unsigned char * d_packet = (unsigned char *)malloc(sizeof(int)*(size+MIN_DATA_P_SIZE));
+		char * d_packet = (char *)malloc(sizeof(int)*(packetDataSize+MIN_DATA_P_SIZE)); //Size = Size of Packet; MIN_DATA_P_SIZE = Header size
+		//d_packet tamanho 100 + 4
+		fprintf(logs, "Packet Serial Number: %d with size= %d\n", i, packetDataSize);
+		printf("writeApp: size of packet: %d\n", packetDataSize);
 
-		fprintf(logs, "Packet Serial Number: %d with size= %d\n", i, size);
-
-		printf("writeApp: size of packet: %d\n", size);
-
-		dataPacket(&app, d_packet, i, (size+MIN_DATA_P_SIZE));
-		if(llwrite(app.filedes, d_packet, size) == -1)
+		dataPacket(&app, d_packet, i, (packetDataSize+MIN_DATA_P_SIZE));
+		if(llwrite(app.filedes, d_packet, packetDataSize + MIN_DATA_P_SIZE) == -1) //TODO size + 4? ALTERACAO
 		{
 			printf("writeApp: Unable to send data packet %d, connection timed out.... Returning...\n", i);
 			free(d_packet);
@@ -165,8 +172,8 @@ int readApp(struct Application app)
 	printf("readApp: opened File %s\n", app.fileName);
 	*/
 
-	unsigned char * startPacket = malloc(MAX_CONTROL_P_SIZE);
-	unsigned char * endPacket = malloc(MAX_CONTROL_P_SIZE);
+	char * startPacket = malloc(MAX_CONTROL_P_SIZE);
+	char * endPacket = malloc(MAX_CONTROL_P_SIZE);
 	printf("readApp: allocated start and end packets\n");
 
 	int resultStartPacket =	llread(app.filedes, startPacket); //Reads the start packet
@@ -205,17 +212,18 @@ int readApp(struct Application app)
 	//NAO APAGAR!!!!!!
 	int numPackets = ceil(((float)fileSize/(float)PACKET_SIZE));
 	int i;
-	unsigned char * dataPacket = malloc(4+MAX_DATA_P_SIZE);
+	char * dataPacket = malloc(4+MAX_DATA_P_SIZE);
 	for(i = 0; i < numPackets; i++) //Reads each packet, and copies the data to the new file
 	{
 		int packetSize = llread(app.filedes, dataPacket); //Assumindo que llread retorna o numero de bytes do packet
+		printf("packetSize: %d\t numPackets: %d\n",packetSize, i);
 		if(packetSize == -1)
 		{
 			printf("readApp: datapacket with error. llread failed\n");
 			return -1;
 		}
 		//printf("readApp: size of data: %d\n", strlen(&dataPacket[4]));
-		fwrite(&dataPacket[4], sizeof(unsigned char), packetSize + 1, file); //Writes the data to the new file
+		fwrite(&dataPacket[4], sizeof(unsigned char), packetSize - MIN_DATA_P_SIZE, file); //Writes the data to the new file
 		//fprintf(file, "%")
 	}
 
@@ -234,7 +242,7 @@ int readApp(struct Application app)
 
 }
 
-void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_FLAG){
+void startPacket(struct Application app, char * c_packet, char CONTROL_FLAG){
 	printf("startPacket: Initializing...\n");
 	c_packet[0] = CONTROL_FLAG;
 	c_packet[1] = 0;
@@ -251,15 +259,15 @@ void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_
 	return;
 }
 
-void dataPacket(struct Application * app, unsigned char * d_packet, int serialNumber, int length){
+void dataPacket(struct Application * app, char * d_packet, int serialNumber, int length){
 	printf("dataPacket: Initializing...\n");//aqui
 	d_packet[0] = DATA_CONTROL;
 	d_packet[1] = serialNumber % 255;
 	d_packet[2] = length / 256;
 	d_packet[3] = length % 256;
 	printf("dataPacket: CONTROL, N, L2, L1 defined\n");
-	memcpy(&d_packet[4], app->buf+app->bufPointer, PACKET_SIZE); //TODO TEMPORARIO. TEM DE SER TROCADO POR PACKETS MAIS RECENTES
-	app->bufPointer += PACKET_SIZE;
+	memcpy(&d_packet[4], app->buf+app->bufPointer, length-MIN_DATA_P_SIZE); //TODO TEMPORARIO. TEM DE SER TROCADO POR PACKETS MAIS RECENTES
+	app->bufPointer += length-MIN_DATA_P_SIZE;
 	printf("dataPacket: bufPointer=%lu\n", app->bufPointer);
 	printf("dataPacket: DATA defined\ndataPacket: Done. Returning...\n");
 	return;
@@ -270,7 +278,7 @@ void dataPacket(struct Application * app, unsigned char * d_packet, int serialNu
 * Returns:
 * 1 = Sucess | 0 = Failure | -1 = Error
 */
-int verifyControlPacket(unsigned char * packet, int type)
+int verifyControlPacket(char * packet, int type)
 {
 	if(packet == NULL)
 	{

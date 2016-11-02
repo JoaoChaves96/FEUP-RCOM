@@ -1,12 +1,12 @@
 #include "alarm.h"
+void (* handler_func) (char *, unsigned int);
 
-int fd;
 unsigned int length;
 char * buffer;
 
-void handler() //Only calls handler when Timeout
+void handleAlarm() //Only calls handler when Timeout
 {
-	alarmActivated = FALSE;
+	/*alarmActivated = FALSE;
 	if(n_timeouts >= MAX_TIMEOUTS){
 		printf("connected exceeded max timeout...\n");
 		//exit(1);
@@ -17,10 +17,22 @@ void handler() //Only calls handler when Timeout
 		alarm(waitT);
 	}
 
+	n_timeouts++;*/
+
+	if(n_timeouts<= MAX_TIMEOUTS){
+		printf("Didn´t get a response. Retrying...\n");
+		handler_func(buffer, length);
+		alarm(waitT);
+	}
+	else{
+		alarmActivated= TRUE;
+		alarm(0);
+	}
 	n_timeouts++;
+	return;
 }
 
-void setAlarm(int wait)
+void setAlarm(void (*func) (char *, unsigned int), char* buf, unsigned int n_length)
 {
 
 /*
@@ -28,23 +40,39 @@ void setAlarm(int wait)
 	length = buf_length;
 	fd = filedes;
 */
-	alarmActivated = FALSE;
+/*	alarmActivated = FALSE;
 	n_timeouts = 0;
 	waitT = wait;
 	alarm(waitT);
-	return;
+	return;*/
+
+handler_func=func;
+buffer=buf;
+length=n_length;
+
+n_timeouts=1;
+alarmActivated= FALSE;
+alarm(waitT);
+
 }
 
 void stopAlarm()
 {
-	alarmActivated = FALSE;
+	//alarmActivated = FALSE;
 	alarm(0);
 }
 
-void configureAlarm()
+void configureAlarm(unsigned int waitTime)
 {
-	(void) signal(SIGALRM, handler);
-	n_timeouts = 0;
+/*	struct sigaction interruptAction;
+	interruptAction.sa_handler = handler;
+	interruptAction.sa_flags &= !SA_RESTART;
+	sigaction(SIGALRM, &interruptAction, NULL);
+	//(void) signal(SIGALRM, handler);
+	n_timeouts = 0;*/
+
+	(void) signal(SIGALRM, handleAlarm);
+	waitT= waitTime;
 }
 
 int getN_timouts(){
