@@ -1,5 +1,4 @@
-/*Non-Canonical Input Processing*/
-
+#include "Statistics.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -19,6 +18,7 @@ int main(int argc, char** argv)
 	//int fd;
 
 	struct Application app;
+	struct Statistics stats;
 
 	  if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -53,6 +53,13 @@ int main(int argc, char** argv)
 		printf("main: readApp failed\n");
 		return -1;
 	}
+
+	stats = getStats();
+
+	printf("\n\n\n");
+	printf("Frames received %d\n", stats.received);
+	printf("Frames repeated %d\n", stats.repeated);
+	printf("Frames rejected %d\n", stats.rejected);
 
 	return 0;
 

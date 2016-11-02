@@ -1,11 +1,5 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <signal.h>
-#include <stdlib.h>
+#ifndef ALARM_H
+#define ALARM_H
 
 #define BAUDRATE B9600
 #define MODEMDEVICE "/dev/ttyS1"
@@ -26,4 +20,4 @@ void stopAlarm();
 
 void configureAlarm(unsigned int waitTime);
 
-//void retry();
+#endif

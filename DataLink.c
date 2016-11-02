@@ -1,3 +1,14 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <signal.h>
+#include "alarm.h"
+#include "Statistics.h"
 #include "DataLink.h"
 
 char SET_PACKET[] = {FLAG, A_SENDER, SET_CODE, A_SENDER ^ SET_CODE, FLAG};
@@ -210,6 +221,7 @@ int llwrite(int fd, char * packet, int length){
 	//printf("\n");
 	//stopAlarm();
 	//printf("llwrite: Valid answer!\n");
+	incTransmitted();
 	x = (x+1) % 2;
 	//printf("llwrite: Returning...\n");
 	return size;
@@ -245,16 +257,19 @@ do{
 		valid = TRUE;
 		control = (R << 7) | RR_0; //== RR_1
 		R = (R + 1) % 2;
+		incReceived();
 	}
 
 	else if(r == 1){ //repeated trama
 		valid = FALSE;
 		control = (R << 7) | RR_0;
+		incRepeated();
 	}
 
 	else{ //Invalid trama
 		valid = FALSE;
 		control = (R << 7) | REJ_0;
+		incRejected();
 	}
 
 	S[0] = FLAG;

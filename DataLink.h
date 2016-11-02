@@ -1,13 +1,5 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <signal.h>
-#include "alarm.h"
+#ifndef DATALINK_H
+#define DATALINK_H
 
 #define BAUDRATE B9600
 #define MODEMDEVICE "/dev/ttyS1"
@@ -54,3 +46,5 @@ int llwrite(int fd, char * buffer, int length);
 int llread(int fd, char* packet);
 
 int llclose(int fd, int programType);
+
+#endif

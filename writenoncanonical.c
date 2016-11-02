@@ -10,10 +10,12 @@
 #include <stdlib.h>
 #include "DataLink.h"
 #include "ApplicationLayer.h"
+#include "Statistics.h"
 
 int main(int argc, char** argv)
 {
   struct Application app;
+  struct Statistics stats;
 
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
@@ -33,6 +35,11 @@ int main(int argc, char** argv)
   int writeAppResult = writeApp(app);
   if(writeAppResult == -1)
   return -1;
+
+  stats = getStats();
+
+  printf("\n\n\n");
+  printf("Frames transmitted %d\n", stats.transmitted);
 
 	return 0;
 

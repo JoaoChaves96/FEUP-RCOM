@@ -1,4 +1,13 @@
 #include "alarm.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <signal.h>
+#include <stdlib.h>
+
 void (* handler_func) (char *, unsigned int);
 
 unsigned int length;
