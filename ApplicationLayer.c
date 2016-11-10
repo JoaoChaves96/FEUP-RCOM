@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
+#include "Statistics.h"
 
 int startApp(struct Application * app, const char * path, int type, const char * fileName, unsigned int nameLength){
 	int r=0;
@@ -213,6 +214,7 @@ int readApp(struct Application app)
 	int numPackets = ceil(((float)fileSize/(float)PACKET_SIZE));
 	int i;
 	unsigned char * dataPacket = malloc(4+MAX_DATA_P_SIZE);
+	int * verification = (int *) malloc(sizeof(int));
 	for(i = 0; i < numPackets; i++) //Reads each packet, and copies the data to the new file
 	{
 		int packetSize = llread(app.filedes, dataPacket); //Assumindo que llread retorna o numero de bytes do packet
@@ -220,29 +222,60 @@ int readApp(struct Application app)
 		if(packetSize == -1)
 		{
 			printf("readApp: datapacket with error. llread failed\n");
+			free(fileName);
+			free(startPacket);
+			free(endPacket);
 			return -1;
+		}
+
+		*verification = verifyDataPacket(dataPacket, i%255);
+		if(*verification == -1)
+		{
+			printf("readApp: corrupt datapacket. Returning...\n");
+			free(fileName);
+			free(startPacket);
+			free(endPacket);
+			return -1;
+		}
+		else if(*verification == 0)
+		{
+			printf("readApp: wrong datapacket received. \n");
+			i--;
+			incRepeated();
+			continue;
 		}
 		//printf("readApp: size of data: %d\n", strlen(&dataPacket[4]));
 		fwrite(&dataPacket[4], sizeof(unsigned char), packetSize - MIN_DATA_P_SIZE, file); //Writes the data to the new file
 		//fprintf(file, "%")
 	}
 
+	free(verification);
+
 	if(llread(app.filedes, endPacket) == -1) //Reads the end packet
 	{
 		printf("readApp: llread(endPacket) failed\n");
+		free(fileName);
+		free(startPacket);
+		free(endPacket);
 		return -1;
 	}
 	if(verifyControlPacket(endPacket, END) != 1)
 	{
 		printf("readApp: EndPacket verification failed \n");
+		free(fileName);
+		free(startPacket);
+		free(endPacket);
 		return -1;
 	}
 
+	free(fileName);
+	free(startPacket);
+	free(endPacket);
 	return 0;
 
 }
 
-void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_FLAG){
+void startPacket(struct Application app, unsigned char * c_packet, unsigned char CONTROL_FLAG){
 	printf("startPacket: Initializing...\n");
 	c_packet[0] = CONTROL_FLAG;
 	c_packet[1] = 0;
@@ -295,5 +328,28 @@ int verifyControlPacket(unsigned char * packet, int type)
 	{
 		printf("verifyControlPacket: INCORRECT\n");
 		return 0; //Its an incorrect control packet
+	}
+}
+
+int verifyDataPacket(unsigned char * packet, int serialNumber)
+{
+	if(packet == NULL)
+	{
+		printf("verifyDataPacket: EMPTY PACKET \n");
+		return -1;
+	}
+	else if(packet[1] != serialNumber)
+	{
+		printf("verifyDataPacket: WRONG PACKET \n");
+		return 0;
+	}
+	else if(packet[0] != 1)
+	{
+		printf("verifyDataPacket: not a Data Packet (received %d)\n", packet[0]);
+		return -1;
+	}
+	else
+	{
+		return 1;
 	}
 }

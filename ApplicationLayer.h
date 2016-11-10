@@ -34,10 +34,12 @@ int writeApp(struct Application app);
 
 int readApp(struct Application app);
 
-void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_FLAG);
+void startPacket(struct Application app, unsigned char * c_packet, unsigned char CONTROL_FLAG);
 
 void dataPacket(struct Application * app, unsigned char * d_packet, unsigned int serialNumber, int length);
 
 int verifyControlPacket(unsigned char * packet, int type);
+
+int verifyDataPacket(unsigned char * packet, int serialNumber);
 
 #endif
