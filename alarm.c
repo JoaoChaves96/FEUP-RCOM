@@ -1,9 +1,9 @@
 #include "alarm.h"
 
-void (* handler_func) (char *, unsigned int);
+void (* handler_func) (unsigned char *, unsigned int);
 
 unsigned int length;
-char * buffer;
+unsigned char * buffer;
 
 void handleAlarm() //Only calls handler when Timeout
 {
@@ -33,7 +33,7 @@ void handleAlarm() //Only calls handler when Timeout
 	return;
 }
 
-void setAlarm(void (*func) (char *, unsigned int), char* buf, unsigned int n_length)
+void setAlarm(void (*func) (unsigned char *, unsigned int), unsigned char* buf, unsigned int n_length)
 {
 
 /*

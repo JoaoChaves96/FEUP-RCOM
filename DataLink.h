@@ -41,9 +41,9 @@
 */
 int llopen(const char * path, int type);
 
-int llwrite(int fd, char * buffer, int length);
+int llwrite(int fd, unsigned char * buffer, int length);
 
-int llread(int fd, char* packet);
+int llread(int fd, unsigned char* packet);
 
 int llclose(int fd, int programType);
 

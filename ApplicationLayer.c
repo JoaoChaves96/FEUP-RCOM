@@ -89,7 +89,7 @@ int openR(struct Application * app, const char *path){
 int writeApp(struct Application app){
 	int pSize = MIN_CONTROL_P_SIZE + app.nameLength;
 
-	char *c_packet = malloc(pSize);
+	unsigned char *c_packet = malloc(pSize);
 	printf("writeApp: controlPacket allocated\n");
 	startPacket(app, c_packet, START);
 	printf("writeApp: name length: %d\n", c_packet[8]);
@@ -133,7 +133,7 @@ int writeApp(struct Application app){
 		else
 			packetDataSize = PACKET_SIZE;
 		//size = app.fileSize;
-		char * d_packet = (char *)malloc(sizeof(int)*(packetDataSize+MIN_DATA_P_SIZE)); //Size = Size of Packet; MIN_DATA_P_SIZE = Header size
+		unsigned char * d_packet = (unsigned char *)malloc(sizeof(int)*(packetDataSize+MIN_DATA_P_SIZE)); //Size = Size of Packet; MIN_DATA_P_SIZE = Header size
 		//d_packet tamanho 100 + 4
 		fprintf(logs, "Packet Serial Number: %d with size= %d\n", i, packetDataSize);
 		printf("writeApp: size of packet: %d\n", packetDataSize);
@@ -172,8 +172,8 @@ int readApp(struct Application app)
 	printf("readApp: opened File %s\n", app.fileName);
 	*/
 
-	char * startPacket = malloc(MAX_CONTROL_P_SIZE);
-	char * endPacket = malloc(MAX_CONTROL_P_SIZE);
+	unsigned char * startPacket = malloc(MAX_CONTROL_P_SIZE);
+	unsigned char * endPacket = malloc(MAX_CONTROL_P_SIZE);
 	printf("readApp: allocated start and end packets\n");
 
 	int resultStartPacket =	llread(app.filedes, startPacket); //Reads the start packet
@@ -212,7 +212,7 @@ int readApp(struct Application app)
 	//NAO APAGAR!!!!!!
 	int numPackets = ceil(((float)fileSize/(float)PACKET_SIZE));
 	int i;
-	char * dataPacket = malloc(4+MAX_DATA_P_SIZE);
+	unsigned char * dataPacket = malloc(4+MAX_DATA_P_SIZE);
 	for(i = 0; i < numPackets; i++) //Reads each packet, and copies the data to the new file
 	{
 		int packetSize = llread(app.filedes, dataPacket); //Assumindo que llread retorna o numero de bytes do packet
@@ -242,7 +242,7 @@ int readApp(struct Application app)
 
 }
 
-void startPacket(struct Application app, char * c_packet, char CONTROL_FLAG){
+void startPacket(struct Application app, unsigned char * c_packet, char CONTROL_FLAG){
 	printf("startPacket: Initializing...\n");
 	c_packet[0] = CONTROL_FLAG;
 	c_packet[1] = 0;
@@ -259,10 +259,11 @@ void startPacket(struct Application app, char * c_packet, char CONTROL_FLAG){
 	return;
 }
 
-void dataPacket(struct Application * app, char * d_packet, int serialNumber, int length){
+void dataPacket(struct Application * app, unsigned char * d_packet, unsigned int serialNumber, int length){
 	printf("dataPacket: Initializing...\n");//aqui
 	d_packet[0] = DATA_CONTROL;
 	d_packet[1] = serialNumber % 255;
+	printf("dataPacket: SERIAL %d %d", serialNumber % 255, d_packet[1]);
 	d_packet[2] = length / 256;
 	d_packet[3] = length % 256;
 	printf("dataPacket: CONTROL, N, L2, L1 defined\n");
@@ -278,7 +279,7 @@ void dataPacket(struct Application * app, char * d_packet, int serialNumber, int
 * Returns:
 * 1 = Sucess | 0 = Failure | -1 = Error
 */
-int verifyControlPacket(char * packet, int type)
+int verifyControlPacket(unsigned char * packet, int type)
 {
 	if(packet == NULL)
 	{

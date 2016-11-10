@@ -23,7 +23,7 @@ int waitT;
 
 void handleAlarm();
 
-void setAlarm(void (*func) (char *, unsigned int), char * buf, unsigned int n_length); //, int filedes, char * buf, int buf_length);
+void setAlarm(void (*func) (unsigned char *, unsigned int), unsigned char * buf, unsigned int n_length); //, int filedes, char * buf, int buf_length);
 
 void stopAlarm();
 
