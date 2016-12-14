@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 
 #include "get_url.h"
@@ -73,7 +75,10 @@ int init_authorized(url_info * i, char* url){
   else
     memcpy(i->file_name, end_file, strlen(end_file));
 
-  if(i->host_info=gethostbyname(i->host) == NULL)
+  if((i->host_info=gethostbyname(i->host)) == NULL){
+    herror(i->host);
+    return 1;
+  }
 
   printf("Username: %s\nPassword: %s\nHost: %s\nPath: %s\nFile:%s\n", i->username, i->password, i->host, i->path, i->file_name);
 
@@ -83,6 +88,7 @@ int init_authorized(url_info * i, char* url){
 int get_url(char * url, url_info * info){
     memset(info->username, 0, 256);
     memset(info->password, 0, 256);
+    memset(info->host, 0, 256);
     memset(info->path, 0, 256);
     memset(info->file_name, 0, 256);
 
