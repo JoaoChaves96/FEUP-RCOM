@@ -27,7 +27,7 @@ int init_authorized(url_info * i, char* url){
   if(strncmp(header, url, 6) != 0)
 {
   printf("Incorrect header of download url, exiting...\n");
-  exit(1);
+  return 1;
 }
 
   url += 6;
@@ -37,7 +37,7 @@ int init_authorized(url_info * i, char* url){
 
   if(end_user - url == 0){
     printf("Url must contain a usernanme, exiting...\n");
-    exit(1);
+    return 1;
   }
   else
     memcpy(i->username, url, end_user - url);
@@ -46,7 +46,7 @@ int init_authorized(url_info * i, char* url){
 
   if(end_password - password == 0){
     printf("Url must contain a password, exiting...\n");
-    exit(1);
+    return 1;
   }
   else
     memcpy(i->password, password, end_password - password);
@@ -67,7 +67,7 @@ int init_authorized(url_info * i, char* url){
 
   if(url - end_file == 0){
     printf("Url must contain a valid file, exiting...\n");
-    exit(1);
+    return 1;
   }
   else
     memcpy(i->file_name, end_file, strlen(end_file));
@@ -85,11 +85,13 @@ int get_url(char * url, url_info * info){
     memset(info->path, 0, 256);
     memset(info->file_name, 0, 256);
 
-  if(strchr(url, '@') == NULL)
+  if(strchr(url, '@') == NULL){
     init_default(info);
-  else
-    init_authorized(info, url);
+    return 0;
+  }
 
-
+  if(init_authorized(info, url) != 0)
+    return 1;
+    
   return 0;
 }
