@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <sys/socket.h>
 #include <netdb.h>
 
 #include "get_url.h"
@@ -92,6 +93,6 @@ int get_url(char * url, url_info * info){
 
   if(init_authorized(info, url) != 0)
     return 1;
-    
+
   return 0;
 }
