@@ -12,11 +12,59 @@
 /*
 * Initializes the url_info struct with FEUP's default username("anonymus") and password("mail@domain")
 */
-void init_default(url_info * i){
+int init_default(char * url, url_info * i){
+
+  char header[] = "ftp://";
+  char input_header[6];
+  memcpy(input_header, url, 6);
+
+  if(strncmp(header, url, 6) != 0)
+{
+  printf("Incorrect header of download url, exiting...\n");
+  return 1;
+}
+
+  url += 6;
+
   int user_size = strlen(DEF_USERNAME) + 1;
   int password_size = strlen(DEF_PASSWORD) + 1;
   memcpy(i->username, DEF_USERNAME, user_size);
   memcpy(i->password, DEF_PASSWORD, password_size);
+
+  char * host = url;
+
+  char * end_host = strchr(url, '/');
+
+  printf("before host: host= %s\nend_host= %s\n", host, end_host);
+
+  memcpy(i->host, host, end_host - host);
+
+  printf("host: %s", i->host);
+
+  char * path = end_host;
+
+  char * end_path = strrchr(url, '/') + 1;
+
+  memcpy(i->path, path, end_path - path);
+
+  char * end_file = end_path;
+
+  if(url - end_file == 0){
+    printf("Url must contain a valid file, exiting...\n");
+    return 1;
+  }
+  else
+    memcpy(i->file_name, end_file, strlen(end_file));
+
+  if((i->host_info=gethostbyname(i->host)) == NULL){
+    herror(i->host);
+    return 1;
+  }
+
+  printf("Username: %s\nPassword: %s\nHost: %s\nPath: %s\nFile:%s\n", i->username, i->password, i->host, i->path, i->file_name);
+
+
+  return 0;
 };
 
 /*
@@ -93,7 +141,7 @@ int get_url(char * url, url_info * info){
     memset(info->file_name, 0, 256);
 
   if(strchr(url, '@') == NULL){
-    init_default(info);
+    init_default(url, info);
     return 0;
   }
 

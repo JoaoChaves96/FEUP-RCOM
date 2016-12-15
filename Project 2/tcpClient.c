@@ -78,9 +78,11 @@ void login(int control_socket, url_info * i){
 
   sprintf(username, "USER %s\r\n", i->username);
   write_s(control_socket, username, NULL, TYPE_READ);
+  printf("%s\n", username);
   sprintf(password, "PASS %s\r\n", i->password);
+  printf("%s\n", password);
   if(write_s(control_socket, password, NULL, TYPE_READ) != 0){
-    printf("Invalid login with username=%s and password=%s, exiting...\n", i->username, i->password);
+    fprintf(stderr, "Bad login. Exiting...\n");
     exit(1);
   }
 }
