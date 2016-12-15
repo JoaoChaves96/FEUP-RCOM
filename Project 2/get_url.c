@@ -35,11 +35,7 @@ int init_default(char * url, url_info * i){
 
   char * end_host = strchr(url, '/');
 
-  printf("before host: host= %s\nend_host= %s\n", host, end_host);
-
   memcpy(i->host, host, end_host - host);
-
-  printf("host: %s", i->host);
 
   char * path = end_host;
 

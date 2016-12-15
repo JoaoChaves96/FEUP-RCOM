@@ -137,6 +137,7 @@ int download(int data_socket, url_info * i){
       printf("Cannot write data in the file, exiting...\n");
       return 1;
     }
+    printf("Receiving data...\n");
   }
 
   fclose(output);

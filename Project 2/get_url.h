@@ -1,7 +1,7 @@
 #ifndef _GET_URL_H
 #define _GET_URL_H
 
-#define DEF_USERNAME "anonymus"
+#define DEF_USERNAME "anonymous"
 #define DEF_PASSWORD "mail@domain"
 
 typedef struct{
